@@ -1,0 +1,125 @@
+package com.example;
+
+import java.sql.*;
+
+public class Main {
+    private static final String URL = "jdbc:postgresql://localhost:5432/airline_db";
+    private static final String USER = "postgres";
+    private static final String PASSWORD = "1111";
+
+    public static void main(String[] args) {
+        try (Connection connection = DriverManager.getConnection(URL, USER, PASSWORD)) {
+            System.out.println("✅ Connection to Airline DB successful!");
+
+            connection.setAutoCommit(false);
+
+            createFlight(connection);
+            createPassenger(connection);
+            createReservation(connection);
+
+            readReservations(connection);
+
+            updateFlightDestination(connection);
+
+            deleteReservation(connection);
+
+            readReservations(connection);
+
+            connection.commit();
+            connection.setAutoCommit(true);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void createFlight(Connection connection) throws Exception {
+        String sql = "INSERT INTO flight (flight_number, destination, departure_time) VALUES (?, ?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            statement.setString(1, "A123");
+            statement.setString(2, "New York");
+            statement.setString(3, "12:00 PM");
+            int rowsInserted = statement.executeUpdate();
+            if (rowsInserted > 0) {
+                try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        int id = generatedKeys.getInt(1);
+                        System.out.println("✅ Flight added: " + "A123" + " (ID: " + id + ")");
+                    }
+                }
+            }
+        }
+    }
+
+    private static void createPassenger(Connection connection) throws Exception {
+        String sql = "INSERT INTO passenger (name, passport_number) VALUES (?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            statement.setString(1, "John Doe");
+            statement.setString(2, "P123456");
+            int rowsInserted = statement.executeUpdate();
+            if (rowsInserted > 0) {
+                try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        int id = generatedKeys.getInt(1);
+                        System.out.println("✅ Passenger added: " + "John Doe" + " (ID: " + id + ")");
+                    }
+                }
+            }
+        }
+    }
+
+    private static void createReservation(Connection connection) throws Exception {
+        String sql = "INSERT INTO reservation (flight_id, passenger_id) VALUES (?, ?)";
+        try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            statement.setInt(1, 1);
+            statement.setInt(2, 1);
+            int rowsInserted = statement.executeUpdate();
+            if (rowsInserted > 0) {
+                try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        int id = generatedKeys.getInt(1);
+                        System.out.println("✅ Reservation added (ID: " + id + ")");
+                    }
+                }
+            }
+        }
+    }
+
+    private static void readReservations(Connection connection) throws Exception {
+        String sql = "SELECT r.id, f.flight_number, f.destination, p.name AS passenger_name " +
+                "FROM reservation r " +
+                "LEFT JOIN flight f ON r.flight_id = f.id " +
+                "LEFT JOIN passenger p ON r.passenger_id = p.id;";
+
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
+
+            System.out.println("\n✈️ List of Reservations:");
+            while (resultSet.next()) {
+                System.out.println("Reservation ID: " + resultSet.getInt("id") +
+                        ", Flight: " + resultSet.getString("flight_number") +
+                        ", Destination: " + resultSet.getString("destination") +
+                        ", Passenger: " + resultSet.getString("passenger_name"));
+            }
+        }
+    }
+
+    private static void updateFlightDestination(Connection connection) throws Exception {
+        String sql = "UPDATE flight SET destination = ? WHERE id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, "Los Angeles");
+            statement.setInt(2, 1);
+            int rowsUpdated = statement.executeUpdate();
+            System.out.println("✅ Updated " + rowsUpdated + " flight(s) to destination: " + "Los Angeles");
+        }
+    }
+
+    private static void deleteReservation(Connection connection) throws Exception {
+        String sql = "DELETE FROM reservation WHERE id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, 1);
+            int rowsDeleted = statement.executeUpdate();
+            System.out.println("❌ Deleted " + rowsDeleted + " reservation(s) with ID: " + 1);
+        }
+    }
+}
